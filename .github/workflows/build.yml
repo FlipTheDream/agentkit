@@ -73,11 +73,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile.prod
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ${{ env.BACKEND_IMAGE }}:${{ github.ref_name }}
             ${{ env.BACKEND_IMAGE }}:latest
@@ -99,11 +101,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/build-push-action@v6
         with:
           context: ./frontend
           file: ./frontend/Dockerfile.prod
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ${{ env.FRONTEND_IMAGE }}:${{ github.ref_name }}
             ${{ env.FRONTEND_IMAGE }}:latest
