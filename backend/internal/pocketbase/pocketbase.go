@@ -140,7 +140,13 @@ func connectNATS(app *pocketbase.PocketBase) {
 	}
 
 	log.Printf("NATS connected to %s", natsURL)
-	nc.Subscribe("agentkit.heartbeat", func(data []byte) {
+	_, err = nc.Subscribe("agentkit.heartbeat", func(data []byte) {
 		log.Printf("received heartbeat: %s", string(data))
 	})
+	if err != nil {
+		log.Printf("NATS subscribe error: %v", err)
+	}
+	if err != nil {
+		log.Printf("NATS subscribe error: %v", err)
+	}
 }
