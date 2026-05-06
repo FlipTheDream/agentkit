@@ -1,0 +1,53 @@
+services:
+  nats:
+    ports:
+      - "4222:4222"
+    healthcheck:
+      test: ["CMD", "nats", "server", "check", "connection", "-s", "nats://localhost:4222"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    ports:
+      - "8090:8090"
+    volumes:
+      - pb_data:/app/pb_data
+    environment:
+      PB_OAUTH_GOOGLE_CLIENT_ID: ${PB_OAUTH_GOOGLE_CLIENT_ID:-}
+      PB_OAUTH_GOOGLE_CLIENT_SECRET: ${PB_OAUTH_GOOGLE_CLIENT_SECRET:-}
+      PB_ADMIN_EMAIL: ${PB_ADMIN_EMAIL:-admin@agentkit.local}
+      PB_ADMIN_PASSWORD: ${PB_ADMIN_PASSWORD:-agentkit123}
+      NATS_URL: nats://nats:4222
+    depends_on:
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8090/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    ports:
+      - "3000:3000"
+    environment:
+      PUBLIC_POCKETBASE_URL: http://localhost:8090
+      PUBLIC_NATS_WS_URL: ws://localhost:9222
+      ORIGIN: http://localhost:3000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  nats_data:
+  pb_data:

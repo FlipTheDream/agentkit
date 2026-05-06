@@ -1,0 +1,68 @@
+services:
+  nats:
+    image: nats:2.10-alpine
+    command: ["-c", "/etc/nats/nats-server.conf"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+      - "9222:9222"
+    volumes:
+      - ./nats/nats-server.conf:/etc/nats/nats-server.conf:ro
+      - nats_data:/data
+    healthcheck:
+      test: ["CMD", "nats", "server", "check", "connection", "-s", "nats://localhost:4222"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./backend:/app
+      - pb_data:/app/pb_data
+    environment:
+      PB_OAUTH_GOOGLE_CLIENT_ID: ${PB_OAUTH_GOOGLE_CLIENT_ID:-}
+      PB_OAUTH_GOOGLE_CLIENT_SECRET: ${PB_OAUTH_GOOGLE_CLIENT_SECRET:-}
+      PB_ADMIN_EMAIL: ${PB_ADMIN_EMAIL:-admin@agentkit.local}
+      PB_ADMIN_PASSWORD: ${PB_ADMIN_PASSWORD:-agentkit123}
+      NATS_URL: nats://nats:4222
+    depends_on:
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8090/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/static:/app/static
+      - ./frontend/svelte.config.js:/app/svelte.config.js:ro
+      - ./frontend/vite.config.ts:/app/vite.config.ts:ro
+      - ./frontend/tsconfig.json:/app/tsconfig.json:ro
+    environment:
+      PUBLIC_POCKETBASE_URL: http://localhost:8090
+      PUBLIC_NATS_WS_URL: ws://localhost:9222
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  nats_data:
+  pb_data:
