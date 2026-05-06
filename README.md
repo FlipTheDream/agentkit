@@ -1,5 +1,12 @@
 # Agentkit
 
+[![CI/CD](https://github.com/WendellTubman/agentkit/actions/workflows/build.yml/badge.svg)](https://github.com/WendellTubman/agentkit/actions/workflows/build.yml)
+[![Go Version](https://img.shields.io/badge/Go-1.23-00ADD8?logo=go)](https://go.dev/)
+[![Svelte](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte)](https://svelte.dev/)
+[![Pocketbase](https://img.shields.io/badge/Pocketbase-v0.25-9C27B0)](https://pocketbase.io/)
+[![NATS](https://img.shields.io/badge/NATS-2.10-27A0D3?logo=natsdotio)](https://nats.io/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)](https://docs.docker.com/compose/)
+
 A reusable fullstack development framework for agentic development workflows, built with Pocketbase (Go), SvelteKit 5, and NATS.
 
 ## Architecture
