@@ -52,12 +52,77 @@ docker compose up --build
 
 Open [http://localhost:5173](http://localhost:5173) to see the dashboard.
 
-### Production
+### Production (self-build)
 
 ```bash
-# Build and run optimized images
+# Build multi-stage optimized images locally
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+
+# Frontend served on :3000, backend on :8090
 ```
+
+### Deploy (pre-built images)
+
+```bash
+# Pull pre-built images from ghcr.io
+docker compose -f docker-compose.deploy.yml up -d
+
+# Uses the latest tagged release images
+# Frontend on :3000, backend on :8090
+```
+
+## Release Workflow
+
+Images are built and published to GitHub Container Registry when a version tag is pushed.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+| Image | Registry Path |
+|-------|---------------|
+| Backend | `ghcr.io/flipthedream/agentkit/backend:v0.1.0` |
+| Frontend | `ghcr.io/flipthedream/agentkit/frontend:v0.1.0` |
+
+Each release also updates the `:latest` tag. Pull requests to `main` run lint and tests without building images.
+
+Open [http://localhost:5173](http://localhost:5173) to see the dashboard.
+
+### Production (self-build)
+
+```bash
+# Build multi-stage optimized images locally
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+
+# Frontend served on :3000, backend on :8090
+```
+
+### Deploy (pre-built images)
+
+```bash
+# Pull pre-built images from ghcr.io
+docker compose -f docker-compose.deploy.yml up -d
+
+# Uses the latest tagged release images
+# Frontend on :3000, backend on :8090
+```
+
+## Release Workflow
+
+Images are built and published to GitHub Container Registry when a version tag is pushed.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+| Image | Registry Path |
+|-------|---------------|
+| Backend | `ghcr.io/flipthedream/agentkit/backend:v0.1.0` |
+| Frontend | `ghcr.io/flipthedream/agentkit/frontend:v0.1.0` |
+
+Each release also updates the `:latest` tag. Pull requests to `main` run lint and tests without building images.
 
 ## Project Structure
 
@@ -66,8 +131,9 @@ agentkit/
 ├── README.md
 ├── SKILL.md                       # AI agent skill definition
 ├── docker-compose.yml             # Development compose
-├── docker-compose.prod.yml        # Production overrides
-├── .github/workflows/build.yml    # CI/CD pipeline
+├── docker-compose.prod.yml        # Production self-build overrides
+├── docker-compose.deploy.yml      # Deploy pre-built ghcr.io images
+├── .github/workflows/build.yml    # CI/CD pipeline (tag → ghcr.io)
 ├── nats/nats-server.conf          # NATS configuration
 ├── backend/
 │   ├── Dockerfile                 # Dev build (air hot-reload)

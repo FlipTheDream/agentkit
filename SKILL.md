@@ -36,8 +36,9 @@ agentkit/
 │           └── (route)/+page.svelte    # Pages with Svelte 5 runes
 ├── nats/nats-server.conf               # NATS server config
 ├── docker-compose.yml                  # Dev with hot-reload
-├── docker-compose.prod.yml             # Prod optimized builds
-└── .github/workflows/build.yml         # CI/CD to ghcr.io
+├── docker-compose.prod.yml             # Prod self-build
+├── docker-compose.deploy.yml           # Deploy from ghcr.io images
+└── .github/workflows/build.yml         # CI/CD → ghcr.io on version tags
 ```
 
 ## Scaffolding New Routes
@@ -187,17 +188,25 @@ docker compose up --build
 
 Backend uses `air` for Go hot-reload (rebuilds on file change). Frontend uses Vite dev server with HMR. Source code is volume-mounted — changes on host reflect immediately.
 
-### Production
+### Production (self-build)
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
 ```
 
-Multi-stage Docker builds produce minimal Alpine images. No hot-reload, no development-only volumes. Nginx reverse proxy on frontend side is configured via `ORIGIN` env var.
+Multi-stage Docker builds produce minimal Alpine images. No hot-reload, no development-only volumes. Frontend served on `:3000`, backend on `:8090`.
+
+### Deploy (pre-built images)
+```bash
+docker compose -f docker-compose.deploy.yml up -d
+```
+
+Pulls pre-built images from `ghcr.io/flipthedream/agentkit/`. Images are built by CI when a version tag (`v*`) is pushed to the repo.
 
 ### Adding New Services
-1. Add a `Dockerfile` in the service directory
+1. Add a `Dockerfile` (and `Dockerfile.prod`) in the service directory
 2. Add service definition to `docker-compose.yml` (dev) and `docker-compose.prod.yml`
-3. If it depends on other services, use `condition: service_healthy`
+3. Add the ghcr.io image to `docker-compose.deploy.yml`
+4. If it depends on other services, use `condition: service_healthy`
 
 ## Pocketbase JavaScript SDK
 
@@ -257,7 +266,7 @@ Frontend tests use Playwright. Run with:
 npx playwright test
 ```
 
-CI validates both on every push via GitHub Actions.
+CI validates both on every push and pull request via GitHub Actions. Docker images are built and published to ghcr.io only when a version tag (`v*`) is pushed.
 
 ## Environment Variable Reference
 
