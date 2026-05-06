@@ -86,7 +86,7 @@ jobs:
       - name: Make package public
         run: |
           gh api --method PATCH \
-            /users/flipthedream/packages/container/agentkit%2Fbackend/visibility \
+            /user/packages/container/agentkit%2Fbackend/visibility \
             -f visibility=public
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -119,7 +119,7 @@ jobs:
       - name: Make package public
         run: |
           gh api --method PATCH \
-            /users/flipthedream/packages/container/agentkit%2Ffrontend/visibility \
+            /user/packages/container/agentkit%2Ffrontend/visibility \
             -f visibility=public
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
