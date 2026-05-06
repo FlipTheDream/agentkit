@@ -1,16 +1,19 @@
 <script>
   import '../app.css';
-  import { pb } from '$lib/pocketbase';
-  import { connectNats, disconnectNats, getNatsConnection } from '$lib/nats';
+  import { getPbFromConfig } from '$lib/pocketbase';
+  import { connectNats, disconnectNats, getNatsConnection } from '$lib/nats.svelte';
   import { onMount } from 'svelte';
 
-  let { children } = $props();
+  let { data, children } = $props();
 
   let pbConnected = $state(false);
 
   onMount(() => {
+    // Eagerly initialize PB singleton with the resolved config.
+    getPbFromConfig(data.config);
+
     checkPbHealth();
-    connectNats();
+    connectNats(data.config.natsWsUrl);
 
     return () => {
       disconnectNats();
@@ -19,7 +22,7 @@
 
   async function checkPbHealth() {
     try {
-      const res = await fetch(`${import.meta.env.PUBLIC_POCKETBASE_URL}/api/health`);
+      const res = await fetch(`${data.config.pocketbaseUrl}/api/health`);
       pbConnected = res.ok;
     } catch {
       pbConnected = false;

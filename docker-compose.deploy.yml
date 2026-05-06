@@ -27,6 +27,8 @@ services:
       PB_ADMIN_EMAIL: ${PB_ADMIN_EMAIL:-admin@agentkit.local}
       PB_ADMIN_PASSWORD: ${PB_ADMIN_PASSWORD:-agentkit123}
       NATS_URL: nats://nats:4222
+      PUBLIC_POCKETBASE_URL: ${PUBLIC_POCKETBASE_URL:-http://localhost:8090}
+      PUBLIC_NATS_WS_URL: ${PUBLIC_NATS_WS_URL:-ws://localhost:9222}
     depends_on:
       nats:
         condition: service_healthy
@@ -42,9 +44,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      PUBLIC_POCKETBASE_URL: http://localhost:8090
-      PUBLIC_NATS_WS_URL: ws://localhost:9222
-      ORIGIN: http://localhost:3000
+      PUBLIC_POCKETBASE_URL: ${PUBLIC_POCKETBASE_URL:-http://localhost:8090}
+      PUBLIC_NATS_WS_URL: ${PUBLIC_NATS_WS_URL:-ws://localhost:9222}
+      INTERNAL_POCKETBASE_URL: http://backend:8090
+      ORIGIN: ${ORIGIN:-http://localhost:3000}
     depends_on:
       backend:
         condition: service_healthy

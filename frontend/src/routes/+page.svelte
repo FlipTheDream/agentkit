@@ -1,12 +1,15 @@
 <script>
-  import { pb } from '$lib/pocketbase';
-  import { publish, getNatsConnection } from '$lib/nats';
+  import { publish } from '$lib/nats.svelte';
   import { onMount } from 'svelte';
 
-  let message = $state('');
+  let { data } = $props();
+
   let helloMessage = $state('');
   let helloTime = $state('');
   let loading = $state(true);
+
+  const adminUrl = $derived(`${data.config.pocketbaseUrl}/_/`);
+  const natsMonitorUrl = $derived(data.config.pocketbaseUrl.replace(/:\d+$/, ':8222'));
 
   onMount(() => {
     fetchHello();
@@ -16,10 +19,10 @@
 
   async function fetchHello() {
     try {
-      const res = await fetch(`${import.meta.env.PUBLIC_POCKETBASE_URL}/api/hello`);
-      const data = await res.json();
-      helloMessage = data.app;
-      helloTime = new Date(data.time).toLocaleTimeString();
+      const res = await fetch(`${data.config.pocketbaseUrl}/api/hello`);
+      const payload = await res.json();
+      helloMessage = payload.app;
+      helloTime = new Date(payload.time).toLocaleTimeString();
     } catch {
       helloMessage = 'Agentkit';
       helloTime = 'offline';
@@ -53,7 +56,7 @@
       </div>
       <h3>Pocketbase</h3>
       <p>Auth &middot; Database &middot; Realtime SSE</p>
-      <a href="http://localhost:8090/_/" target="_blank" class="card-link">Admin Panel</a>
+      <a href={adminUrl} target="_blank" class="card-link">Admin Panel</a>
     </div>
 
     <div class="card">
@@ -76,7 +79,7 @@
       </div>
       <h3>NATS</h3>
       <p>Pub/Sub &middot; WebSocket &middot; Realtime</p>
-      <a href="http://localhost:8222" target="_blank" class="card-link">Monitoring</a>
+      <a href={natsMonitorUrl} target="_blank" class="card-link">Monitoring</a>
     </div>
   </div>
 </div>

@@ -7,6 +7,9 @@ const config = {
   kit: {
     adapter: adapter(),
     csrf: {
+      // Cross-origin browser API calls (frontend → backend) are explicitly
+      // allowed; the backend has its own auth layer. Kept as checkOrigin
+      // for now — migrate to trustedOrigins when upgrading SvelteKit.
       checkOrigin: false
     }
   }

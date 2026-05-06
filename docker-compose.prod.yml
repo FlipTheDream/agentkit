@@ -1,7 +1,13 @@
 services:
   nats:
+    image: nats:2.10-alpine
+    command: ["-c", "/etc/nats/nats-server.conf"]
     ports:
       - "4222:4222"
+      - "9222:9222"
+    volumes:
+      - ./nats/nats-server.conf:/etc/nats/nats-server.conf:ro
+      - nats_data:/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
       interval: 5s
@@ -13,6 +19,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
+      target: runtime
     ports:
       - "8090:8090"
     volumes:
@@ -23,6 +30,8 @@ services:
       PB_ADMIN_EMAIL: ${PB_ADMIN_EMAIL:-admin@agentkit.local}
       PB_ADMIN_PASSWORD: ${PB_ADMIN_PASSWORD:-agentkit123}
       NATS_URL: nats://nats:4222
+      PUBLIC_POCKETBASE_URL: ${PUBLIC_POCKETBASE_URL:-http://localhost:8090}
+      PUBLIC_NATS_WS_URL: ${PUBLIC_NATS_WS_URL:-ws://localhost:9222}
     depends_on:
       nats:
         condition: service_healthy
@@ -37,12 +46,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
+      target: runner
     ports:
       - "3000:3000"
     environment:
-      PUBLIC_POCKETBASE_URL: http://localhost:8090
-      PUBLIC_NATS_WS_URL: ws://localhost:9222
-      ORIGIN: http://localhost:3000
+      PUBLIC_POCKETBASE_URL: ${PUBLIC_POCKETBASE_URL:-http://localhost:8090}
+      PUBLIC_NATS_WS_URL: ${PUBLIC_NATS_WS_URL:-ws://localhost:9222}
+      INTERNAL_POCKETBASE_URL: http://backend:8090
+      ORIGIN: ${ORIGIN:-http://localhost:3000}
     depends_on:
       backend:
         condition: service_healthy
