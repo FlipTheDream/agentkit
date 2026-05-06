@@ -19,6 +19,12 @@ build/
 pb_data/
 pb_migrations/
 
+# Air
+tmp/
+
+# Air
+tmp/
+
 # Env & secrets
 .env
 .env.*

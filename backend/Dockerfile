@@ -12,4 +12,4 @@ COPY . .
 
 EXPOSE 8090
 
-CMD ["air", "--", "-c", "cmd/server/main.go"]
+CMD ["air", "-c", ".air.toml"]

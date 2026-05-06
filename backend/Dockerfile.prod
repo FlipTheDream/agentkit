@@ -21,4 +21,4 @@ COPY --from=builder /build/server /app/server
 
 EXPOSE 8090
 
-CMD ["/app/server"]
+CMD ["/app/server", "serve", "--http=0.0.0.0:8090"]
