@@ -56,7 +56,7 @@ Open [http://localhost:5173](http://localhost:5173) to see the dashboard.
 
 ```bash
 # Build multi-stage optimized images locally
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+docker compose -f docker-compose.prod.yml up --build -d
 
 # Frontend served on :3000, backend on :8090
 ```
@@ -67,62 +67,45 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
 # Pull pre-built images from ghcr.io
 docker compose -f docker-compose.deploy.yml up -d
 
-# Uses the latest tagged release images
+# Uses the latest :latest image (updated on every push to main)
 # Frontend on :3000, backend on :8090
 ```
 
+## Runtime Configuration
+
+Frontend URLs (Pocketbase API, NATS WebSocket) are resolved at **runtime**
+from the backend's `/api/config` endpoint. This means a single published
+image can be deployed to any environment — per-deployment URLs are set as
+environment variables on the **backend** container, not baked into the
+frontend at build time.
+
+```
+PUBLIC_POCKETBASE_URL   → returned by /api/config, used by browser
+PUBLIC_NATS_WS_URL      → returned by /api/config, used by browser
+INTERNAL_POCKETBASE_URL → used by the frontend SSR layer to call the
+                          backend via docker internal DNS
+```
+
+The frontend falls back to build-time defaults only if `/api/config`
+fails (keeps local dev and tests working without the backend running).
+
 ## Release Workflow
 
-Images are built and published to GitHub Container Registry when a version tag is pushed.
+Images are built and published to GitHub Container Registry:
+
+- **Every push to `main`** → publishes `:main` and `:latest` (multi-arch).
+- **Version tag `v*`** → publishes `:vX.Y.Z`, `:X.Y`, and updates `:latest`.
+- **Pull requests** → build only (no push), for validation.
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
 | Image | Registry Path |
 |-------|---------------|
-| Backend | `ghcr.io/flipthedream/agentkit/backend:v0.1.0` |
-| Frontend | `ghcr.io/flipthedream/agentkit/frontend:v0.1.0` |
-
-Each release also updates the `:latest` tag. Pull requests to `main` run lint and tests without building images.
-
-Open [http://localhost:5173](http://localhost:5173) to see the dashboard.
-
-### Production (self-build)
-
-```bash
-# Build multi-stage optimized images locally
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
-
-# Frontend served on :3000, backend on :8090
-```
-
-### Deploy (pre-built images)
-
-```bash
-# Pull pre-built images from ghcr.io
-docker compose -f docker-compose.deploy.yml up -d
-
-# Uses the latest tagged release images
-# Frontend on :3000, backend on :8090
-```
-
-## Release Workflow
-
-Images are built and published to GitHub Container Registry when a version tag is pushed.
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-| Image | Registry Path |
-|-------|---------------|
-| Backend | `ghcr.io/flipthedream/agentkit/backend:v0.1.0` |
-| Frontend | `ghcr.io/flipthedream/agentkit/frontend:v0.1.0` |
-
-Each release also updates the `:latest` tag. Pull requests to `main` run lint and tests without building images.
+| Backend | `ghcr.io/flipthedream/agentkit/backend:v0.1.2` |
+| Frontend | `ghcr.io/flipthedream/agentkit/frontend:v0.1.2` |
 
 ## Project Structure
 
@@ -133,7 +116,7 @@ agentkit/
 ├── docker-compose.yml             # Development compose
 ├── docker-compose.prod.yml        # Production self-build overrides
 ├── docker-compose.deploy.yml      # Deploy pre-built ghcr.io images
-├── .github/workflows/build.yml    # CI/CD pipeline (tag → ghcr.io)
+├── .github/workflows/build.yml    # CI/CD pipeline
 ├── nats/nats-server.conf          # NATS configuration
 ├── backend/
 │   ├── Dockerfile                 # Dev build (air hot-reload)
@@ -141,7 +124,7 @@ agentkit/
 │   ├── go.mod
 │   ├── cmd/server/main.go         # Entry point
 │   └── internal/
-│       ├── pocketbase/            # PB bootstrap + hooks
+│       ├── pocketbase/            # PB bootstrap + hooks + /api/config
 │       └── nats/                  # NATS subscriber client
 └── frontend/
     ├── Dockerfile                 # Dev build (Vite HMR)
@@ -151,9 +134,11 @@ agentkit/
     ├── vite.config.ts
     └── src/
         ├── lib/
-        │   ├── pocketbase.ts      # PB SDK client singleton
+        │   ├── config.ts          # Runtime config loader (SSR + browser)
+        │   ├── pocketbase.ts      # PB SDK client factory
         │   └── nats.ts            # NATS WS client
         └── routes/
+            ├── +layout.ts         # Universal load → resolves /api/config
             ├── +layout.svelte     # Root layout
             └── +page.svelte       # Dashboard
 ```
@@ -161,7 +146,7 @@ agentkit/
 ## Extension Points
 
 ### Pocketbase Hooks
-Define hooks in `backend/internal/pocketbase/hooks.go` to intercept record CRUD operations, auth events, and API calls.
+Define hooks in `backend/internal/pocketbase/` to intercept record CRUD operations, auth events, and API calls.
 
 ### OAuth2 Providers
 Configure providers via `PB_OAUTH_GOOGLE_CLIENT_ID` and `PB_OAUTH_GOOGLE_CLIENT_SECRET` environment variables. Additional providers can be added in `backend/internal/pocketbase/pocketbase.go`.
@@ -186,3 +171,34 @@ Add new routes under `frontend/src/routes/`. SvelteKit file-based routing maps d
 | `PB_OAUTH_GOOGLE_CLIENT_SECRET` | No | - | Google OAuth2 client secret |
 | `PB_ADMIN_EMAIL` | No | admin@agentkit.local | Admin panel email |
 | `PB_ADMIN_PASSWORD` | No | agentkit123 | Admin panel password |
+| `PUBLIC_POCKETBASE_URL` | No | http://localhost:8090 | Public URL the browser uses to reach Pocketbase; served to frontend via `/api/config` |
+| `PUBLIC_NATS_WS_URL` | No | ws://localhost:9222 | Public URL the browser uses for NATS WebSocket |
+| `INTERNAL_POCKETBASE_URL` | No | http://backend:8090 | Internal docker-network URL the frontend SSR layer uses to call the backend |
+| `NATS_URL` | No | nats://nats:4222 | Backend → NATS server URL |
+| `ORIGIN` | No | http://localhost:3000 | SvelteKit adapter-node trusted origin |
+
+## Troubleshooting
+
+### Backend container restarts / `/api/health` fails on deploy
+
+The published `:latest` image must have `/app/server serve --http=0.0.0.0:8090`
+as its command. Running `/app/server` without a subcommand makes PocketBase
+print CLI help and exit (causing the healthcheck to fail and the container
+to loop under `restart: unless-stopped`).
+
+Verify with:
+```bash
+docker image inspect ghcr.io/flipthedream/agentkit/backend:latest \
+  --format '{{json .Config.Cmd}} {{json .Config.Entrypoint}}'
+```
+Expected: `["serve","--http=0.0.0.0:8090"] ["/app/server"]`.
+
+If the image is stale, push any commit to `main` (or cut a new tag) to
+trigger a rebuild — the workflow now publishes on every main push.
+
+### Frontend shows "offline" for API status
+
+If the frontend is inside Docker, SSR calls go to
+`INTERNAL_POCKETBASE_URL` (default `http://backend:8090`). Make sure the
+backend service is named `backend` in your compose file, or override this
+env var accordingly.

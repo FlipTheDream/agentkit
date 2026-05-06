@@ -190,7 +190,7 @@ Backend uses `air` for Go hot-reload (rebuilds on file change). Frontend uses Vi
 
 ### Production (self-build)
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+docker compose -f docker-compose.prod.yml up --build -d
 ```
 
 Multi-stage Docker builds produce minimal Alpine images. No hot-reload, no development-only volumes. Frontend served on `:3000`, backend on `:8090`.
@@ -210,22 +210,29 @@ Pulls pre-built images from `ghcr.io/flipthedream/agentkit/`. Images are built b
 
 ## Pocketbase JavaScript SDK
 
-The client is initialized as a singleton:
-
-```ts
-// frontend/src/lib/pocketbase.ts
-import PocketBase from 'pocketbase';
-
-export const pb = new PocketBase(import.meta.env.PUBLIC_POCKETBASE_URL);
-```
-
-Use in any Svelte component:
+The client is initialized lazily from runtime config. In components that
+run inside a SvelteKit route, use the config forwarded by `+layout.ts`:
 
 ```svelte
 <script>
-  import { pb } from '$lib/pocketbase';
+  import { getPbFromConfig } from '$lib/pocketbase';
+  let { data } = $props();
+  const pb = getPbFromConfig(data.config);
+</script>
+```
+
+The factory is idempotent and lives in `$lib/pocketbase.ts`. Pass it the
+`config` that SvelteKit loads have resolved from `/api/config`.
+
+Example usage in a component:
+
+```svelte
+<script>
+  import { getPbFromConfig } from '$lib/pocketbase';
   import { onMount } from 'svelte';
 
+  let { data } = $props();
+  const pb = getPbFromConfig(data.config);
   let records = $state([]);
 
   $effect(() => {
@@ -268,15 +275,38 @@ npx playwright test
 
 CI validates both on every push and pull request via GitHub Actions. Docker images are built and published to ghcr.io only when a version tag (`v*`) is pushed.
 
+## Runtime Configuration (`/api/config`)
+
+Frontend URLs are resolved at runtime, not baked into the image at build
+time. The backend exposes `GET /api/config` which returns:
+
+```json
+{
+  "pocketbaseUrl": "http://localhost:8090",
+  "natsWsUrl": "ws://localhost:9222"
+}
+```
+
+Values are read from backend env vars `PUBLIC_POCKETBASE_URL` and
+`PUBLIC_NATS_WS_URL`. The frontend's `+layout.ts` load function fetches
+this endpoint once and forwards the config to all child routes via
+`data.config`.
+
+SSR fetches go through `INTERNAL_POCKETBASE_URL` (docker internal DNS),
+while browser fetches go through `PUBLIC_POCKETBASE_URL`. If the fetch
+fails, the frontend falls back to build-time `PUBLIC_*` defaults so dev
+and tests work without a live backend.
+
 ## Environment Variable Reference
 
 | Variable | Where | Purpose |
 |----------|-------|---------|
-| `PB_OAUTH_GOOGLE_CLIENT_ID` | Docker compose | Google OAuth2 client ID |
-| `PB_OAUTH_GOOGLE_CLIENT_SECRET` | Docker compose | Google OAuth2 client secret |
-| `PB_ADMIN_EMAIL` | Docker compose | Default admin account email |
-| `PB_ADMIN_PASSWORD` | Docker compose | Default admin account password |
-| `NATS_URL` | Backend container | NATS connection string |
-| `PUBLIC_POCKETBASE_URL` | Frontend build | Pocketbase API URL (client-side) |
-| `PUBLIC_NATS_WS_URL` | Frontend build | NATS WebSocket URL (client-side) |
+| `PB_OAUTH_GOOGLE_CLIENT_ID` | Backend | Google OAuth2 client ID |
+| `PB_OAUTH_GOOGLE_CLIENT_SECRET` | Backend | Google OAuth2 client secret |
+| `PB_ADMIN_EMAIL` | Backend | Default admin account email |
+| `PB_ADMIN_PASSWORD` | Backend | Default admin account password |
+| `NATS_URL` | Backend | NATS connection string (`nats://nats:4222`) |
+| `PUBLIC_POCKETBASE_URL` | Backend + frontend fallback | Public URL browser uses to reach Pocketbase; returned by `/api/config` |
+| `PUBLIC_NATS_WS_URL` | Backend + frontend fallback | Public URL browser uses for NATS WebSocket; returned by `/api/config` |
+| `INTERNAL_POCKETBASE_URL` | Frontend | Docker-internal URL the SSR layer uses (default `http://backend:8090`) |
 | `ORIGIN` | Frontend prod container | Trusted origin for CSRF protection |
