@@ -28,16 +28,17 @@ func Bootstrap() *pocketbase.PocketBase {
 	return app
 }
 
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
 func bootstrapSuperuser(app *pocketbase.PocketBase) {
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
-		email := os.Getenv("PB_ADMIN_EMAIL")
-		password := os.Getenv("PB_ADMIN_PASSWORD")
-		if email == "" {
-			email = "admin@agentkit.local"
-		}
-		if password == "" {
-			password = "agentkit123"
-		}
+		email := envOr("PB_ADMIN_EMAIL", "admin@agentkit.local")
+		password := envOr("PB_ADMIN_PASSWORD", "agentkit123")
 
 		existing, _ := app.FindAuthRecordByEmail(core.CollectionNameSuperusers, email)
 		if existing == nil {
@@ -110,9 +111,16 @@ func registerRoutes(app *pocketbase.PocketBase) {
 			})
 		})
 
-		se.Router.GET("/api/health", func(e *core.RequestEvent) error {
+		// NOTE: /api/health is registered by PocketBase itself (v0.25+).
+		// Do not re-register it here; doing so panics with a pattern conflict.
+
+		// /api/config returns runtime configuration the frontend needs to
+		// connect to backend services. Values come from env so a single
+		// published image can be deployed across environments.
+		se.Router.GET("/api/config", func(e *core.RequestEvent) error {
 			return e.JSON(200, map[string]any{
-				"status": "healthy",
+				"pocketbaseUrl": envOr("PUBLIC_POCKETBASE_URL", "http://localhost:8090"),
+				"natsWsUrl":     envOr("PUBLIC_NATS_WS_URL", "ws://localhost:9222"),
 			})
 		})
 
@@ -128,10 +136,7 @@ func registerHooks(app *pocketbase.PocketBase) {
 }
 
 func connectNATS(app *pocketbase.PocketBase) {
-	natsURL := os.Getenv("NATS_URL")
-	if natsURL == "" {
-		natsURL = "nats://localhost:4222"
-	}
+	natsURL := envOr("NATS_URL", "nats://localhost:4222")
 
 	nc, err := nats.Connect(natsURL)
 	if err != nil {
@@ -140,13 +145,9 @@ func connectNATS(app *pocketbase.PocketBase) {
 	}
 
 	log.Printf("NATS connected to %s", natsURL)
-	_, err = nc.Subscribe("agentkit.heartbeat", func(data []byte) {
+	if _, err := nc.Subscribe("agentkit.heartbeat", func(data []byte) {
 		log.Printf("received heartbeat: %s", string(data))
-	})
-	if err != nil {
-		log.Printf("NATS subscribe error: %v", err)
-	}
-	if err != nil {
+	}); err != nil {
 		log.Printf("NATS subscribe error: %v", err)
 	}
 }
