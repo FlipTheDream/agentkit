@@ -1,6 +1,6 @@
 # Agentkit
 
-[![CI/CD](https://github.com/WendellTubman/agentkit/actions/workflows/build.yml/badge.svg)](https://github.com/WendellTubman/agentkit/actions/workflows/build.yml)
+[![CI/CD](https://github.com/FlipTheDream/agentkit/actions/workflows/build.yml/badge.svg)](https://github.com/FlipTheDream/agentkit/actions/workflows/build.yml)
 [![Go Version](https://img.shields.io/badge/Go-1.23-00ADD8?logo=go)](https://go.dev/)
 [![Svelte](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte)](https://svelte.dev/)
 [![Pocketbase](https://img.shields.io/badge/Pocketbase-v0.25-9C27B0)](https://pocketbase.io/)
