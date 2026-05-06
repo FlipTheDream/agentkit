@@ -3,7 +3,7 @@ services:
     ports:
       - "4222:4222"
     healthcheck:
-      test: ["CMD", "nats", "server", "check", "connection", "-s", "nats://localhost:4222"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
       interval: 5s
       timeout: 3s
       retries: 5
