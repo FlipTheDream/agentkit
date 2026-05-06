@@ -12,8 +12,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
-  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend
+  BACKEND_IMAGE: ghcr.io/flipthedream/agentkit/backend
+  FRONTEND_IMAGE: ghcr.io/flipthedream/agentkit/frontend
 
 jobs:
   lint-backend:
@@ -86,7 +86,7 @@ jobs:
       - name: Make package public
         run: |
           gh api --method PATCH \
-            /users/FlipTheDream/packages/container/agentkit%2Fbackend/visibility \
+            /users/flipthedream/packages/container/agentkit%2Fbackend/visibility \
             -f visibility=public
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -119,7 +119,7 @@ jobs:
       - name: Make package public
         run: |
           gh api --method PATCH \
-            /users/FlipTheDream/packages/container/agentkit%2Ffrontend/visibility \
+            /users/flipthedream/packages/container/agentkit%2Ffrontend/visibility \
             -f visibility=public
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
