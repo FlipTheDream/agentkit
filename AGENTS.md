@@ -80,4 +80,8 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Child DOX Index
 
-This project is not yet indexed. Before continuing you must scan the project, build the DOX tree and replace this message with the actual index. Go deep and scan files recursively to properly evaluate complexity and create nested DOX files where needed.
+- `backend/` — Go + Pocketbase backend; PB bootstrap, hooks, OAuth, NATS subscriber
+- `frontend/` — SvelteKit 5 + TypeScript dashboard; runtime config, shared clients
+- `nats/` — NATS server config (mounted by every compose file)
+- `.github/` — GitHub Actions CI/CD (lint, test, build, publish to ghcr.io)
+- `skills/` — local agent skills (SKILL.md files, loaded by the skill tool — not by DOX walk)
